@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "compile": "solcjs --abi --include-path node_modules/ --base-path . blockchain/contracts/Deal.sol --output-dir blockchain/build"
   },
   "dependencies": {
     "@types/node": "18.11.12",
@@ -18,6 +19,7 @@
     "next": "13.0.6",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "solc": "^0.8.17",
     "typescript": "4.9.4",
     "web3": "^1.7.4"
   }
