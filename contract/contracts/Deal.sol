@@ -116,6 +116,7 @@ contract Deal {
         require((orders[number].price + orders[number].delivery.price) == msg.value);
 
         orders[number].payment = orders[number].price;
+        orders[number].delivery.payment = orders[number].delivery.price;
 
         emit OrderPaid(msg.sender, msg.value, block.timestamp, number);
 
