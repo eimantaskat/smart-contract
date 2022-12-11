@@ -67,6 +67,7 @@ const Deal = () => {
             const buyerAddress = await dealContract.methods.buyerAddress().call();
             if (address === buyerAddress) {
                 getOrdersHandler();
+                getOrders();
                 return setBuyer(true);
             }
             // TODO courier
@@ -101,7 +102,7 @@ const Deal = () => {
                 let order = await dealContract.methods.orders(i).call()
                 contractOrders.push(order);
             }
-            console.log(contractOrders)
+
             setPlacedOrders(contractOrders);
         } catch (err) {
             setError(err.message);
@@ -113,7 +114,6 @@ const Deal = () => {
             await dealContract.methods.placeOrder(item, amount).send(
                 {
                     from: address,
-                    // value: web3.utils.toWei("2", "ether"),
                 }
             )
             updateView();
@@ -173,7 +173,48 @@ const Deal = () => {
     };
 
     const paymentHandler = async (event) => {
+        let fields = event.target.parentElement.parentElement.childNodes;
+        let number = fields[0].textContent;
+        let totalPrice = fields[5].textContent;
 
+        try {
+            await dealContract.methods.pay(number).send(
+                {
+                    from: address,
+                    value: web3.utils.toWei(totalPrice, "ether")
+                }
+            );
+            
+            updateView();
+        } catch (err) {
+            setError(err.message);
+        }
+    };
+
+    const startDeliveryHandler = async (event) => {
+        let fields = event.target.parentElement.parentElement.childNodes;
+        let number = fields[0].textContent;
+        let plannedDate = fields[3].childNodes[0];
+        let courierAddress = fields[4].childNodes[0];
+
+        if(!plannedDate.value && !courierAddress.value) {
+            return setError("Enter planned date and courier address");
+        }
+
+        let date = new Date(plannedDate.value);
+        let time = date.getTime()
+
+        try {
+            await dealContract.methods.startDelivery(courierAddress.value, time, number).send(
+                {
+                    from: address
+                }
+            );
+            
+            updateView();
+        } catch (err) {
+            setError(err.message);
+        }
     };
 
     return (
@@ -258,9 +299,9 @@ const Deal = () => {
                                                         <td>{index}</td>
                                                         <td>{order.product}</td>
                                                         <td>{order.quantity}</td>
-                                                        <td>{order.price}</td>
-                                                        <td>{order.delivery.price}</td>
-                                                        <td>{order.payment}</td>
+                                                        <td>{web3.utils.fromWei(order.price, "ether")}</td>
+                                                        <td>{web3.utils.fromWei(order.delivery.price, "ether")}</td>
+                                                        <td>{web3.utils.fromWei(order.payment, "ether")}</td>
                                                         <td>{stages[order.stage]}</td>
                                                     </tr>
                                                 )
@@ -303,12 +344,12 @@ const Deal = () => {
                                                                 {
                                                                     !order.priceSet ?
                                                                         <>
-                                                                            <input type="number" className="form-control" defaultValue={order.price}/>
+                                                                            <input type="number" className="form-control" defaultValue={web3.utils.fromWei(order.price, "ether")}/>
                                                                             <button onClick={setPriceHandler} type="button" className="btn btn-primary">Set price</button>
                                                                         </>
                                                                     :
                                                                         <>
-                                                                            <input type="number" className="form-control" value={order.price} readOnly/>
+                                                                            <input type="number" className="form-control" value={web3.utils.fromWei(order.price, "ether")} readOnly/>
                                                                             <button onClick={setPriceHandler} type="button" className="btn btn-primary" disabled>Set price</button>
                                                                         </>
                                                                 }
@@ -319,16 +360,56 @@ const Deal = () => {
                                                                 {
                                                                     !order.delivery.priceSet ?
                                                                         <>
-                                                                            <input type="number" className="form-control" defaultValue={order.delivery.price}/>
+                                                                            <input type="number" className="form-control" defaultValue={web3.utils.fromWei(order.delivery.price, "ether")}/>
                                                                             <button onClick={setDeliveryPriceHandler} type="button" className="btn btn-primary">Set delivery price</button>
                                                                         </>
                                                                     :
                                                                         <>
-                                                                            <input type="number" className="form-control" value={order.delivery.price} readOnly/>
+                                                                            <input type="number" className="form-control" value={web3.utils.fromWei(order.delivery.price, "ether")} readOnly/>
                                                                             <button onClick={setDeliveryPriceHandler} type="button" className="btn btn-primary" disabled>Set delivery price</button>
                                                                         </>
                                                                 }
                                                             </div>
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            }
+                                        })
+                                    }
+                                    </>
+                                </tbody>
+                            </table>
+                            <h3>WAITING FOR DELIVERY</h3>
+                            <table className="table m-5 table-hover">
+                                <thead className="thead-dark">
+                                    <tr>
+                                        <th scope="col">#</th>
+                                        <th scope="col">Product</th>
+                                        <th scope="col">Quantity</th>
+                                        <th scope="col">Planned delivery date</th>
+                                        <th scope="col">Courier address</th>
+                                        <th/>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <>
+                                    {
+                                        placedOrders.map((order, index) => {
+                                            index++;
+                                            if (order.stage === "2") {
+                                                return (
+                                                    <tr key={index}>
+                                                        <td>{index}</td>
+                                                        <td>{order.product}</td>
+                                                        <td>{order.quantity}</td>
+                                                        <td>
+                                                            <input type="date" className="form-control" />
+                                                        </td>
+                                                        <td>
+                                                            <input type="text" className="form-control"/>
+                                                        </td>
+                                                        <td>
+                                                            <button onClick={startDeliveryHandler} type="button" className="btn btn-primary">Start delivery</button>
                                                         </td>
                                                     </tr>
                                                 )
@@ -367,9 +448,9 @@ const Deal = () => {
                                                         <td>{index}</td>
                                                         <td>{order.product}</td>
                                                         <td>{order.quantity}</td>
-                                                        <td>{order.price}</td>
-                                                        <td>{order.delivery.price}</td>
-                                                        <td>{Number(order.price) + Number(order.delivery.price)}</td>
+                                                        <td>{web3.utils.fromWei(order.price, "ether")}</td>
+                                                        <td>{web3.utils.fromWei(order.delivery.price, "ether")}</td>
+                                                        <td>{web3.utils.fromWei((Number(order.price) + Number(order.delivery.price)).toString(), "ether")}</td>
                                                         <td>
                                                             <button onClick={paymentHandler} type="button" className="btn btn-primary">Pay</button>
                                                         </td>
