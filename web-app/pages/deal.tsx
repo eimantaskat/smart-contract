@@ -19,9 +19,6 @@ const Deal = () => {
     const [buyer, setBuyer] = useState(false);
     const [courier, setCourier] = useState(false);
 
-    const [price, setPrice] = useState([]);
-    const [deliveryPrice, setDeliveryPrice] = useState([]);
-
     const stages = ["New", "Waiting for payment", "Shipping", "Shipped", "Done"]
 
     useEffect(() => {
@@ -139,15 +136,45 @@ const Deal = () => {
         }
     };
 
-    const setPriceHandler = async (event : React.ChangeEvent<HTMLInputElement>) => {
-        console.log(event);
-        setPrice(event.target.value);
+    const setPriceHandler = async (event) => {
+        let fields = event.target.parentElement.parentElement.parentElement.childNodes;
+        let number = fields[0].textContent;
+        
+        let price = fields[3].childNodes[0].childNodes[0].value;
+        try {
+            await dealContract.methods.setOrderPrice(price, number).send(
+                {
+                    from: address
+                }
+            )
+
+            updateView();
+        } catch (err) {
+            setError(err.message);
+        }
     };
 
-    const setDeliveryPriceHandler = async (event : React.ChangeEvent<HTMLInputElement>) => {
-        setDeliveryPrice(event.target.value)
+    const setDeliveryPriceHandler = async (event) => {
+        let fields = event.target.parentElement.parentElement.parentElement.childNodes;
+        let number = fields[0].textContent;
+        
+        let deliveryPrice = fields[4].childNodes[0].childNodes[0].value;
+        try {
+            await dealContract.methods.setDeliveryPrice(deliveryPrice, number).send(
+                {
+                    from: address
+                }
+            )
+            
+            updateView();
+        } catch (err) {
+            setError(err.message);
+        }
     };
 
+    const paymentHandler = async (event) => {
+
+    };
 
     return (
         <div className={styles.main}>
@@ -216,6 +243,7 @@ const Deal = () => {
                                         <th scope="col">Product</th>
                                         <th scope="col">Quantity</th>
                                         <th scope="col">Price</th>
+                                        <th scope="col">Delivery price</th>
                                         <th scope="col">Payment</th>
                                         <th scope="col">Stage</th>
                                         </tr>
@@ -224,12 +252,14 @@ const Deal = () => {
                                         <>
                                         {
                                             placedOrders.map((order, index) => {
+                                                index++;
                                                 return (
-                                                    <tr key={index}>
+                                                    <tr key={index} id={index.toString()}>
                                                         <td>{index}</td>
                                                         <td>{order.product}</td>
                                                         <td>{order.quantity}</td>
                                                         <td>{order.price}</td>
+                                                        <td>{order.delivery.price}</td>
                                                         <td>{order.payment}</td>
                                                         <td>{stages[order.stage]}</td>
                                                     </tr>
@@ -249,34 +279,99 @@ const Deal = () => {
                             <table className="table m-5 table-hover">
                                 <thead className="thead-dark">
                                     <tr>
-                                    <th scope="col">#</th>
-                                    <th scope="col">Product</th>
-                                    <th scope="col">Quantity</th>
-                                    <th scope="col">Price</th>
-                                    <th scope="col">Delivery price</th>
+                                        <th scope="col">#</th>
+                                        <th scope="col">Product</th>
+                                        <th scope="col">Quantity</th>
+                                        <th scope="col">Price</th>
+                                        <th scope="col">Delivery price</th>
+                                        <th/>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <>
                                     {
                                         placedOrders.map((order, index) => {
-                                            if (order.stage === "0" && !order.priceSet) {
+                                            index++;
+                                            if (order.stage === "0" && (!order.priceSet || !order.delivery.priceSet)) {
                                                 return (
                                                     <tr key={index}>
                                                         <td>{index}</td>
                                                         <td>{order.product}</td>
                                                         <td>{order.quantity}</td>
                                                         <td>
-                                                            {
-                                                                order.price === "0" &&
-                                                                <input type="text" onChange={setPriceHandler} className="form-control" value={order.price}/>
-                                                            }
+                                                            <div className="input-group">
+                                                                {
+                                                                    !order.priceSet ?
+                                                                        <>
+                                                                            <input type="number" className="form-control" defaultValue={order.price}/>
+                                                                            <button onClick={setPriceHandler} type="button" className="btn btn-primary">Set price</button>
+                                                                        </>
+                                                                    :
+                                                                        <>
+                                                                            <input type="number" className="form-control" value={order.price} readOnly/>
+                                                                            <button onClick={setPriceHandler} type="button" className="btn btn-primary" disabled>Set price</button>
+                                                                        </>
+                                                                }
+                                                            </div>
                                                         </td>
+                                                        <td> 
+                                                            <div className="input-group">
+                                                                {
+                                                                    !order.delivery.priceSet ?
+                                                                        <>
+                                                                            <input type="number" className="form-control" defaultValue={order.delivery.price}/>
+                                                                            <button onClick={setDeliveryPriceHandler} type="button" className="btn btn-primary">Set delivery price</button>
+                                                                        </>
+                                                                    :
+                                                                        <>
+                                                                            <input type="number" className="form-control" value={order.delivery.price} readOnly/>
+                                                                            <button onClick={setDeliveryPriceHandler} type="button" className="btn btn-primary" disabled>Set delivery price</button>
+                                                                        </>
+                                                                }
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            }
+                                        })
+                                    }
+                                    </>
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    {
+                        buyer && 
+                        <div className="container">
+                            <h3>WAITING FOR PAYMENT</h3>
+                            <table className="table m-5 table-hover">
+                                <thead className="thead-dark">
+                                    <tr>
+                                        <th scope="col">#</th>
+                                        <th scope="col">Product</th>
+                                        <th scope="col">Quantity</th>
+                                        <th scope="col">Price</th>
+                                        <th scope="col">Delivery price</th>
+                                        <th scope="col">Total price</th>
+                                        <th/>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <>
+                                    {
+                                        placedOrders.map((order, index) => {
+                                            index++;
+                                            if (order.stage === "1") {
+                                                return (
+                                                    <tr key={index}>
+                                                        <td>{index}</td>
+                                                        <td>{order.product}</td>
+                                                        <td>{order.quantity}</td>
+                                                        <td>{order.price}</td>
+                                                        <td>{order.delivery.price}</td>
+                                                        <td>{Number(order.price) + Number(order.delivery.price)}</td>
                                                         <td>
-                                                            {
-                                                                order.delivery.price === "0" &&
-                                                                <input type="text" onChange={setDeliveryPriceHandler} className="form-control" value={order.delivery.price}/>
-                                                            }
+                                                            <button onClick={paymentHandler} type="button" className="btn btn-primary">Pay</button>
                                                         </td>
                                                     </tr>
                                                 )
