@@ -8,6 +8,7 @@ contract("Deal", (accounts) => {
     const PRODUCT_QTY = 1;
     const PRICE = 2;
     const DELIVERY_PRICE = 1;
+    const ORDER_NO = 1;
 
     it("Seller should own the contract", async () => {
         var deal = await Deal.new(BUYER, {from: SELLER});
@@ -54,7 +55,7 @@ contract("Deal", (accounts) => {
         const deal = await Deal.new(BUYER, {from: SELLER});
         await deal.placeOrder(PRODUCT, PRODUCT_QTY, {from: BUYER});
 
-        const response = await deal.setOrderPrice(PRICE, {from: SELLER});
+        const response = await deal.setOrderPrice(PRICE, ORDER_NO, {from: SELLER});
         const event = response.logs[0].event;
 
         return assert.equal(event, 'OrderPriceSet', 'Seller cannot set order price');
@@ -70,7 +71,7 @@ contract("Deal", (accounts) => {
             }
 
             try {
-                await deal.setOrderPrice(PRICE, {from: accounts[i]});
+                await deal.setOrderPrice(PRICE, ORDER_NO, {from: accounts[i]});
             } catch (e) {
                 if (e.message === 'Returned error: VM Exception while processing transaction: revert') {
                     continue;
@@ -83,9 +84,9 @@ contract("Deal", (accounts) => {
     it("Correct order price is set", async () => {
         const deal = await Deal.new(BUYER, {from: SELLER});
         await deal.placeOrder(PRODUCT, PRODUCT_QTY, {from: BUYER});
-        await deal.setOrderPrice(PRICE, {from: SELLER});
+        await deal.setOrderPrice(PRICE, ORDER_NO, {from: SELLER});
 
-        const order = await deal.getOrder()
+        const order = await deal.getOrder(ORDER_NO)
         const price = order.price.toNumber();
 
         return assert.equal(price, PRICE, 'Order price is not set correctly');
@@ -95,7 +96,7 @@ contract("Deal", (accounts) => {
         const deal = await Deal.new(BUYER, {from: SELLER});
         await deal.placeOrder(PRODUCT, PRODUCT_QTY, {from: BUYER});
 
-        const response = await deal.setDeliveryPrice(DELIVERY_PRICE, {from: SELLER});
+        const response = await deal.setDeliveryPrice(DELIVERY_PRICE, ORDER_NO, {from: SELLER});
         const event = response.logs[0].event;
 
         return assert.equal(event, 'DeliveryPriceSet', 'Seller cannot set delivery price');
@@ -111,7 +112,7 @@ contract("Deal", (accounts) => {
             }
 
             try {
-                await deal.setDeliveryPrice(DELIVERY_PRICE, {from: accounts[i]});
+                await deal.setDeliveryPrice(DELIVERY_PRICE, ORDER_NO, {from: accounts[i]});
             } catch (e) {
                 if (e.message === 'Returned error: VM Exception while processing transaction: revert') {
                     continue;
@@ -124,9 +125,9 @@ contract("Deal", (accounts) => {
     it("Correct delivery price is set", async () => {
         const deal = await Deal.new(BUYER, {from: SELLER});
         await deal.placeOrder(PRODUCT, PRODUCT_QTY, {from: BUYER});
-        await deal.setDeliveryPrice(DELIVERY_PRICE, {from: SELLER});
+        await deal.setDeliveryPrice(DELIVERY_PRICE, ORDER_NO, {from: SELLER});
 
-        const order = await deal.getOrder()
+        const order = await deal.getOrder(ORDER_NO)
         const price = order.deliveryPrice.toNumber();
 
         return assert.equal(price, DELIVERY_PRICE, 'Delivery price is not set correctly');
@@ -135,10 +136,10 @@ contract("Deal", (accounts) => {
     it("Cannot change order price", async () => {
         const deal = await Deal.new(BUYER, {from: SELLER});
         await deal.placeOrder(PRODUCT, PRODUCT_QTY, {from: BUYER});
-        await deal.setOrderPrice(PRICE, {from: SELLER});
+        await deal.setOrderPrice(PRICE, ORDER_NO, {from: SELLER});
 
         try {
-            await deal.setOrderPrice(PRICE, {from: SELLER});
+            await deal.setOrderPrice(PRICE, ORDER_NO, {from: SELLER});
         } catch (e) {
             if (e.message === 'Returned error: VM Exception while processing transaction: revert') {
                 return;
@@ -150,10 +151,10 @@ contract("Deal", (accounts) => {
     it("Cannot change delivery price", async () => {
         const deal = await Deal.new(BUYER, {from: SELLER});
         await deal.placeOrder(PRODUCT, PRODUCT_QTY, {from: BUYER});
-        await deal.setDeliveryPrice(DELIVERY_PRICE, {from: SELLER});
+        await deal.setDeliveryPrice(DELIVERY_PRICE, ORDER_NO, {from: SELLER});
 
         try {
-            await deal.setDeliveryPrice(DELIVERY_PRICE, {from: SELLER});
+            await deal.setDeliveryPrice(DELIVERY_PRICE, ORDER_NO, {from: SELLER});
         } catch (e) {
             if (e.message === 'Returned error: VM Exception while processing transaction: revert') {
                 return;
@@ -165,10 +166,10 @@ contract("Deal", (accounts) => {
     it("Buyer can pay for order", async () => {
         const deal = await Deal.new(BUYER, {from: SELLER});
         await deal.placeOrder(PRODUCT, PRODUCT_QTY, {from: BUYER});
-        await deal.setOrderPrice(PRICE, {from: SELLER});
-        await deal.setDeliveryPrice(DELIVERY_PRICE, {from: SELLER});
+        await deal.setOrderPrice(PRICE, ORDER_NO, {from: SELLER});
+        await deal.setDeliveryPrice(DELIVERY_PRICE, ORDER_NO, {from: SELLER});
 
-        const response = await deal.pay({from: BUYER, value: (PRICE + DELIVERY_PRICE)})
+        const response = await deal.pay(ORDER_NO, {from: BUYER, value: (PRICE + DELIVERY_PRICE)})
         const event = response.logs[0].event;
 
         return assert.equal(event, 'OrderPaid', 'Buyer cannot pay for order');
@@ -177,11 +178,11 @@ contract("Deal", (accounts) => {
     it("Payment value cannot be lower that order price + delivery price", async () => {
         const deal = await Deal.new(BUYER, {from: SELLER});
         await deal.placeOrder(PRODUCT, PRODUCT_QTY, {from: BUYER});
-        await deal.setOrderPrice(DELIVERY_PRICE, {from: SELLER});
-        await deal.setDeliveryPrice(DELIVERY_PRICE, {from: SELLER});
+        await deal.setOrderPrice(DELIVERY_PRICE, ORDER_NO, {from: SELLER});
+        await deal.setDeliveryPrice(DELIVERY_PRICE, ORDER_NO, {from: SELLER});
 
         try {
-            await deal.pay({from: BUYER, price: (PRICE + DELIVERY_PRICE - 1)});
+            await deal.pay(ORDER_NO, {from: BUYER, price: (PRICE + DELIVERY_PRICE - 1)});
         } catch (e) {
             if (e.message === 'Returned error: VM Exception while processing transaction: revert') {
                 return;
@@ -193,11 +194,11 @@ contract("Deal", (accounts) => {
     it("Payment value cannot be higher that order price + delivery price", async () => {
         const deal = await Deal.new(BUYER, {from: SELLER});
         await deal.placeOrder(PRODUCT, PRODUCT_QTY, {from: BUYER});
-        await deal.setOrderPrice(DELIVERY_PRICE, {from: SELLER});
-        await deal.setDeliveryPrice(DELIVERY_PRICE, {from: SELLER});
+        await deal.setOrderPrice(PRICE, ORDER_NO, {from: SELLER});
+        await deal.setDeliveryPrice(DELIVERY_PRICE, ORDER_NO, {from: SELLER});
 
         try {
-            await deal.pay({from: BUYER, price: (PRICE + DELIVERY_PRICE + 1)});
+            await deal.pay(ORDER_NO, {from: BUYER, price: (PRICE + DELIVERY_PRICE + 1)});
         } catch (e) {
             if (e.message === 'Returned error: VM Exception while processing transaction: revert') {
                 return;
@@ -209,11 +210,11 @@ contract("Deal", (accounts) => {
     it("Seller can set courier address", async () => {
         const deal = await Deal.new(BUYER, {from: SELLER});
         await deal.placeOrder(PRODUCT, PRODUCT_QTY, {from: BUYER});
-        await deal.setOrderPrice(PRICE, {from: SELLER});
-        await deal.setDeliveryPrice(DELIVERY_PRICE, {from: SELLER});
-        await deal.pay({from: BUYER, value: (PRICE + DELIVERY_PRICE)});
+        await deal.setOrderPrice(PRICE, ORDER_NO, {from: SELLER});
+        await deal.setDeliveryPrice(DELIVERY_PRICE, ORDER_NO, {from: SELLER});
+        await deal.pay(ORDER_NO, {from: BUYER, value: (PRICE + DELIVERY_PRICE)});
 
-        const response = await deal.startDelivery(COURIER, 1, {from: SELLER});
+        const response = await deal.startDelivery(COURIER, 1, ORDER_NO, {from: SELLER});
         const event = response.logs[0].event;
 
         return assert.equal(event, 'DeliveryStarted', 'Seller cannot set courier address');
@@ -222,13 +223,13 @@ contract("Deal", (accounts) => {
     it("Courier address is set correctly", async () => {
         const deal = await Deal.new(BUYER, {from: SELLER});
         await deal.placeOrder(PRODUCT, PRODUCT_QTY, {from: BUYER});
-        await deal.setOrderPrice(PRICE, {from: SELLER});
-        await deal.setDeliveryPrice(DELIVERY_PRICE, {from: SELLER});
-        await deal.pay({from: BUYER, value: (PRICE + DELIVERY_PRICE)});
-        await deal.startDelivery(COURIER, 1, {from: SELLER});
+        await deal.setOrderPrice(PRICE, ORDER_NO, {from: SELLER});
+        await deal.setDeliveryPrice(DELIVERY_PRICE, ORDER_NO, {from: SELLER});
+        await deal.pay(ORDER_NO, {from: BUYER, value: (PRICE + DELIVERY_PRICE)});
+        await deal.startDelivery(COURIER, 1, ORDER_NO, {from: SELLER});
 
         try {
-            await deal.getInvoice({from: COURIER});
+            await deal.getInvoice(ORDER_NO, {from: COURIER});
         } catch (e) {
             if (e.message === 'Returned error: VM Exception while processing transaction: revert') {
                 return assert.fail('Courier address is not set correctly')
@@ -240,12 +241,12 @@ contract("Deal", (accounts) => {
     it("Courier can confirm delivery", async () => {
         const deal = await Deal.new(BUYER, {from: SELLER});
         await deal.placeOrder(PRODUCT, PRODUCT_QTY, {from: BUYER});
-        await deal.setOrderPrice(PRICE, {from: SELLER});
-        await deal.setDeliveryPrice(DELIVERY_PRICE, {from: SELLER});
-        await deal.pay({from: BUYER, value: (PRICE + DELIVERY_PRICE)});
-        await deal.startDelivery(COURIER, 1, {from: SELLER});
+        await deal.setOrderPrice(PRICE, ORDER_NO, {from: SELLER});
+        await deal.setDeliveryPrice(DELIVERY_PRICE, ORDER_NO, {from: SELLER});
+        await deal.pay(ORDER_NO, {from: BUYER, value: (PRICE + DELIVERY_PRICE)});
+        await deal.startDelivery(COURIER, 1, ORDER_NO, {from: SELLER});
 
-        const response = await deal.delivered({from: COURIER});
+        const response = await deal.delivered(ORDER_NO, {from: COURIER});
         const event = response.logs[0].event;
 
         return assert.equal(event, 'OrderDelivered', 'Courier cannot confirm delivery');

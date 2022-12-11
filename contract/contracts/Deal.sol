@@ -2,6 +2,14 @@
 pragma solidity >=0.4.22 <0.9.0;
 
 contract Deal {
+    // Order stage
+    // Init: Order has been placed, waiting for seller to set product and shipment price
+    // Payment: Waiting for customer to pay for order
+    // Shipping: Order has been paid, waiting for seller to start delkivery
+    // Shipped: Waiting for courrier to ship an order
+    // Done: smart contract completed
+    enum Stage {Init, Payment, Shipping, Shipped, Done}
+
     struct Delivery {
         address payable courierAddress;
         uint price;
@@ -19,6 +27,7 @@ contract Deal {
         uint price;
         uint payment;
         Delivery delivery;
+        Stage stage;
 
         bool initialised;
         bool priceSet;
@@ -27,25 +36,15 @@ contract Deal {
     address payable public sellerAddress;
     address public buyerAddress;
 
-    // Contract stage
-    // Init: contract has been initiasised, waiting for buyer to place an order
-    // WaitingForPrice: Waiting for seller to set product and shipment price
-    // Payment: Waiting for customer to pay for order
-    // Shipping: Order has been paid, waiting for seller to start delkivery
-    // Shipped: Waiting for courrier to ship an order
-    // Done: smart contract completed
-    enum Stage {Init, WaitingForPrice, Payment, Shipping, Shipped, Done}
-    Stage stage = Stage.Init;
-
-    Order order;
-
+    mapping (uint => Order) orders;
+    uint orderSequence;
     // EVENTS
-    event OrderPlaced(address buyer, string product, uint quantity);
-    event OrderPriceSet(address buyer, uint price);
-    event DeliveryPriceSet(address buyer, uint price);
-    event OrderPaid(address buyer, uint value, uint now);
-    event DeliveryStarted(address buyer, uint delivery_date, address courier);
-    event OrderDelivered(address buyer, uint delivey_date, address courier);
+    event OrderPlaced(address buyer, string product, uint quantity, uint orderNumber);
+    event OrderPriceSet(address buyer, uint price, uint orderNumber);
+    event DeliveryPriceSet(address buyer, uint price, uint orderNumber);
+    event OrderPaid(address buyer, uint value, uint now, uint orderNumber);
+    event DeliveryStarted(address buyer, uint delivery_date, address courier, uint orderNumber);
+    event OrderDelivered(address buyer, uint delivey_date, address courier, uint orderNumber);
 
     constructor(address buyer) {
         sellerAddress = payable(msg.sender);
@@ -54,112 +53,117 @@ contract Deal {
     }
 
     function placeOrder(string calldata product, uint quantity) public payable {
-        require(stage == Stage.Init);
         require(msg.sender == buyerAddress);
 
-        order = Order(product, quantity, 0, 0, 
+        orderSequence++;
+        orders[orderSequence] = Order(product, quantity, 0, 0, 
                                         Delivery(payable(0), 0, 0, 0, 0, false, false),
-                                        true, false);
+                                        Stage.Init, true, false);
 
-        stage = Stage.WaitingForPrice;
-        emit OrderPlaced(buyerAddress, product, quantity);
+        emit OrderPlaced(buyerAddress, product, quantity, orderSequence);
     }
 
-    function getOrder() view public returns(address buyer, string memory product, uint quantity, uint price, uint payment, uint deliveryPrice) {
-        require(order.initialised);
+    function getOrder(uint number) view public returns(address buyer, string memory product, uint quantity, uint price, uint payment, uint deliveryPrice) {
+        require(orders[number].initialised);
 
         return(
             buyerAddress,
-            order.product,
-            order.quantity,
-            order.price, 
-            order.payment,
-            order.delivery.price
+            orders[number].product,
+            orders[number].quantity,
+            orders[number].price, 
+            orders[number].payment,
+            orders[number].delivery.price
         );
     }
 
-    function setOrderPrice(uint price) public payable {
-        require(stage == Stage.WaitingForPrice);
+    function setOrderPrice(uint price, uint number) public payable {
+        require(orders[number].initialised);
+        require(orders[number].stage == Stage.Init);
         require(sellerAddress == msg.sender);
-        require(!order.priceSet);
+        require(!orders[number].priceSet);
 
-        order.price = price;
-        order.priceSet = true;
+        orders[number].price = price;
+        orders[number].priceSet = true;
 
-        emit OrderPriceSet(buyerAddress, price);
+        emit OrderPriceSet(buyerAddress, price, number);
 
-        if (order.priceSet && order.delivery.priceSet) {
-            stage = Stage.Payment;
+        if (orders[number].priceSet && orders[number].delivery.priceSet) {
+            orders[number].stage = Stage.Payment;
         }
     }
 
-    function setDeliveryPrice(uint price) public payable {
-        require(stage == Stage.WaitingForPrice);
+    function setDeliveryPrice(uint price, uint number) public payable {
+        require(orders[number].initialised);
+        require(orders[number].stage == Stage.Init);
         require(sellerAddress == msg.sender);
-        require(!order.delivery.priceSet);
+        require(!orders[number].delivery.priceSet);
 
-        order.delivery.price = price;
-        order.delivery.priceSet = true;
-        order.delivery.initialised = true;
+        orders[number].delivery.price = price;
+        orders[number].delivery.priceSet = true;
+        orders[number].delivery.initialised = true;
 
-        emit DeliveryPriceSet(buyerAddress, price);
+        emit DeliveryPriceSet(buyerAddress, price, number);
 
-        if (order.priceSet && order.delivery.priceSet) {
-            stage = Stage.Payment;
+        if (orders[number].priceSet && orders[number].delivery.priceSet) {
+            orders[number].stage = Stage.Payment;
         }
     }
 
-    function pay() public payable {
-        require(stage == Stage.Payment);
+    function pay(uint number) public payable {
+        require(orders[number].initialised);
+        require(orders[number].stage == Stage.Payment);
         require(buyerAddress == msg.sender);
-        require(order.initialised);
-        require((order.price + order.delivery.price) == msg.value);
+        require((orders[number].price + orders[number].delivery.price) == msg.value);
 
-        order.payment = order.price;
+        orders[number].payment = orders[number].price;
 
-        emit OrderPaid(msg.sender, msg.value, block.timestamp);
+        emit OrderPaid(msg.sender, msg.value, block.timestamp, number);
 
-        stage = Stage.Shipping;
+        orders[number].stage = Stage.Shipping;
     }
 
-    function startDelivery(address courier, uint plannedDeliveryDate) public payable {
-        require(stage == Stage.Shipping);
+    function startDelivery(address courier, uint plannedDeliveryDate, uint number) public payable {
+        require(orders[number].initialised);
+        require(orders[number].stage == Stage.Shipping);
         require(sellerAddress == msg.sender);
 
-        order.delivery.plannedDate = plannedDeliveryDate;
-        order.delivery.courierAddress = payable(courier);
+        orders[number].delivery.plannedDate = plannedDeliveryDate;
+        orders[number].delivery.courierAddress = payable(courier);
 
-        emit DeliveryStarted(buyerAddress, plannedDeliveryDate, courier);
+        emit DeliveryStarted(buyerAddress, plannedDeliveryDate, courier, number);
 
-        stage = Stage.Shipped;
+        orders[number].stage = Stage.Shipped;
     }
 
-    function getInvoice() view public returns(address buyer, uint deliveryDate, address courier) {
-        require(order.delivery.courierAddress == msg.sender);
+    function getInvoice(uint number) view public returns(address buyer, uint deliveryDate, address courier) {
+        require(orders[number].initialised);
+        require(orders[number].delivery.courierAddress == msg.sender);
 
-        return(buyerAddress, order.delivery.plannedDate, order.delivery.courierAddress);
+        return(buyerAddress, orders[number].delivery.plannedDate, orders[number].delivery.courierAddress);
     }
 
-    function delivered() public payable {
-        require(stage == Stage.Shipped);
-        require(order.delivery.courierAddress == msg.sender);
+    function delivered(uint number) public payable {
+        require(orders[number].initialised);
+        require(orders[number].stage == Stage.Shipped);
+        require(orders[number].delivery.courierAddress == msg.sender);
 
-        order.delivery.deliveryDate = block.timestamp;
+        orders[number].delivery.deliveryDate = block.timestamp;
 
-        emit OrderDelivered(buyerAddress, block.timestamp, order.delivery.courierAddress);
+        emit OrderDelivered(buyerAddress, block.timestamp, orders[number].delivery.courierAddress, number);
 
-        sellerAddress.transfer(order.payment);
-        order.delivery.courierAddress.transfer(order.delivery.payment);
+        sellerAddress.transfer(orders[number].payment);
+        orders[number].delivery.courierAddress.transfer(orders[number].delivery.payment);
 
-        stage = Stage.Done;
+        orders[number].stage = Stage.Done;
     }
 
-    function getStage() view public returns(Stage currentStage) {
+    function getStage(uint number) view public returns(Stage currentStage) {
+        require(orders[number].initialised);
         require(
             sellerAddress == msg.sender || buyerAddress == msg.sender ||
-            order.delivery.courierAddress == msg.sender
+            orders[number].delivery.courierAddress == msg.sender
         );
 
-        return(stage);
+        return(orders[number].stage);
     }
 }
