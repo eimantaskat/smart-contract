@@ -175,14 +175,14 @@ contract("Deal", (accounts) => {
         return assert.equal(event, 'OrderPaid', 'Buyer cannot pay for order');
     });
 
-    it("Payment value cannot be lower that order price + delivery price", async () => {
+    it("Payment value cannot be lower than order price + delivery price", async () => {
         const deal = await Deal.new(BUYER, {from: SELLER});
         await deal.placeOrder(PRODUCT, PRODUCT_QTY, {from: BUYER});
-        await deal.setOrderPrice(DELIVERY_PRICE, ORDER_NO, {from: SELLER});
+        await deal.setOrderPrice(PRICE, ORDER_NO, {from: SELLER});
         await deal.setDeliveryPrice(DELIVERY_PRICE, ORDER_NO, {from: SELLER});
 
         try {
-            await deal.pay(ORDER_NO, {from: BUYER, price: (PRICE + DELIVERY_PRICE - 1)});
+            await deal.pay(ORDER_NO, {from: BUYER, value: (PRICE + DELIVERY_PRICE - 1)});
         } catch (e) {
             if (e.message === 'Returned error: VM Exception while processing transaction: revert') {
                 return;
@@ -198,7 +198,7 @@ contract("Deal", (accounts) => {
         await deal.setDeliveryPrice(DELIVERY_PRICE, ORDER_NO, {from: SELLER});
 
         try {
-            await deal.pay(ORDER_NO, {from: BUYER, price: (PRICE + DELIVERY_PRICE + 1)});
+            await deal.pay(ORDER_NO, {from: BUYER, value: (PRICE + DELIVERY_PRICE + 1)});
         } catch (e) {
             if (e.message === 'Returned error: VM Exception while processing transaction: revert') {
                 return;
