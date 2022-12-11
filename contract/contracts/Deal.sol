@@ -36,8 +36,8 @@ contract Deal {
     address payable public sellerAddress;
     address public buyerAddress;
 
-    mapping (uint => Order) orders;
-    uint orderSequence;
+    mapping (uint => Order) public orders;
+    uint public orderSequence;
     // EVENTS
     event OrderPlaced(address buyer, string product, uint quantity, uint orderNumber);
     event OrderPriceSet(address buyer, uint price, uint orderNumber);
