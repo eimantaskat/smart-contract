@@ -50,7 +50,6 @@ const Deal = () => {
         updateView();
         setSeller(false);
         setBuyer(false);
-        setCourier(false);
     }
 
     const updateView = async () => {
@@ -61,16 +60,16 @@ const Deal = () => {
             const sellerAddress = await dealContract.methods.sellerAddress().call();
             if (address === sellerAddress) {
                 getOrdersHandler();
-                getOrders();
                 return setSeller(true);
             }
             const buyerAddress = await dealContract.methods.buyerAddress().call();
             if (address === buyerAddress) {
                 getOrdersHandler();
-                getOrders();
                 return setBuyer(true);
             }
-            // TODO courier
+            getOrdersHandler();
+            getOrders();
+            return setCourier(true);
         } catch (err) {
             setError(err.message);
         }
@@ -142,7 +141,7 @@ const Deal = () => {
         
         let price = fields[3].childNodes[0].childNodes[0].value;
         try {
-            await dealContract.methods.setOrderPrice(price, number).send(
+            await dealContract.methods.setOrderPrice(web3.utils.toWei(price, "ether"), number).send(
                 {
                     from: address
                 }
@@ -160,7 +159,7 @@ const Deal = () => {
         
         let deliveryPrice = fields[4].childNodes[0].childNodes[0].value;
         try {
-            await dealContract.methods.setDeliveryPrice(deliveryPrice, number).send(
+            await dealContract.methods.setDeliveryPrice(web3.utils.toWei(deliveryPrice, "ether"), number).send(
                 {
                     from: address
                 }
@@ -206,6 +205,23 @@ const Deal = () => {
 
         try {
             await dealContract.methods.startDelivery(courierAddress.value, time, number).send(
+                {
+                    from: address
+                }
+            );
+            
+            updateView();
+        } catch (err) {
+            setError(err.message);
+        }
+    };
+
+    const deliveryHandler = async (event) => {
+        let fields = event.target.parentElement.parentElement.childNodes;
+        let number = fields[0].textContent;
+
+        try {
+            await dealContract.methods.delivered(number).send(
                 {
                     from: address
                 }
@@ -285,7 +301,6 @@ const Deal = () => {
                                         <th scope="col">Quantity</th>
                                         <th scope="col">Price</th>
                                         <th scope="col">Delivery price</th>
-                                        <th scope="col">Payment</th>
                                         <th scope="col">Stage</th>
                                         </tr>
                                     </thead>
@@ -301,7 +316,6 @@ const Deal = () => {
                                                         <td>{order.quantity}</td>
                                                         <td>{web3.utils.fromWei(order.price, "ether")}</td>
                                                         <td>{web3.utils.fromWei(order.delivery.price, "ether")}</td>
-                                                        <td>{web3.utils.fromWei(order.payment, "ether")}</td>
                                                         <td>{stages[order.stage]}</td>
                                                     </tr>
                                                 )
@@ -453,6 +467,45 @@ const Deal = () => {
                                                         <td>{web3.utils.fromWei((Number(order.price) + Number(order.delivery.price)).toString(), "ether")}</td>
                                                         <td>
                                                             <button onClick={paymentHandler} type="button" className="btn btn-primary">Pay</button>
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            }
+                                        })
+                                    }
+                                    </>
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    {
+                        courier && 
+                        <div className="container">
+                            <h3>TO BE DELIVERED</h3>
+                            <table className="table m-5 table-hover">
+                                <thead className="thead-dark">
+                                    <tr>
+                                        <th scope="col">#</th>
+                                        <th scope="col">Product</th>
+                                        <th scope="col">Quantity</th>
+                                        <th scope="col">Planned date</th>
+                                        <th/>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <>
+                                    {
+                                        placedOrders.map((order, index) => {
+                                            index++;
+                                            if (order.stage === "3") {
+                                                return (
+                                                    <tr key={index}>
+                                                        <td>{index}</td>
+                                                        <td>{order.product}</td>
+                                                        <td>{order.quantity}</td>
+                                                        <td>{order.delivery.plannedDate}</td>
+                                                        <td>
+                                                            <button onClick={deliveryHandler} type="button" className="btn btn-primary">Confirm Delivery</button>
                                                         </td>
                                                     </tr>
                                                 )
