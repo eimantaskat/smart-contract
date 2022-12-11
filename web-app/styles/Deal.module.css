@@ -1,3 +1,7 @@
 .main h1 {
     font-weight: bold;
 }
+
+.fade-out {
+    transition: visibility 0s 2s, opacity 2s linear;
+}

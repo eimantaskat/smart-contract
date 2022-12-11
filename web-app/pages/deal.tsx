@@ -19,6 +19,11 @@ const Deal = () => {
     const [buyer, setBuyer] = useState(false);
     const [courier, setCourier] = useState(false);
 
+    const [price, setPrice] = useState([]);
+    const [deliveryPrice, setDeliveryPrice] = useState([]);
+
+    const stages = ["New", "Waiting for payment", "Shipping", "Shipped", "Done"]
+
     useEffect(() => {
         if (dealContract) {
             updateView();
@@ -69,11 +74,7 @@ const Deal = () => {
             }
             // TODO courier
         } catch (err) {
-            if (err instanceof Error) {
-                setError(err.message);
-            } else {
-                setError(`Unexpected error: ${err}`);
-            }
+            setError(err.message);
         }
     }
 
@@ -106,11 +107,7 @@ const Deal = () => {
             console.log(contractOrders)
             setPlacedOrders(contractOrders);
         } catch (err) {
-            if (err instanceof Error) {
-                setError(err.message);
-            } else {
-                setError(`Unexpected error: ${err}`);
-            }
+            setError(err.message);
         }
     }
 
@@ -122,12 +119,9 @@ const Deal = () => {
                     // value: web3.utils.toWei("2", "ether"),
                 }
             )
+            updateView();
         } catch (err) {
-            if (err instanceof Error) {
-                setError(err.message);
-            } else {
-                setError(`Unexpected error: ${err}`);
-            }
+            setError(err.message);
         }
     };
 
@@ -141,12 +135,17 @@ const Deal = () => {
             var w3 = new Web3(window.ethereum);
             setWeb3(w3);
         } catch (err) {
-            if (err instanceof Error) {
-                setError(err.message);
-            } else {
-                setError(`Unexpected error: ${err}`);
-            }
+            setError(err.message);
         }
+    };
+
+    const setPriceHandler = async (event : React.ChangeEvent<HTMLInputElement>) => {
+        console.log(event);
+        setPrice(event.target.value);
+    };
+
+    const setDeliveryPriceHandler = async (event : React.ChangeEvent<HTMLInputElement>) => {
+        setDeliveryPrice(event.target.value)
     };
 
 
@@ -178,23 +177,19 @@ const Deal = () => {
                     <section>
                         <div className="container text-primary">
                             <h4>Connected wallet: {address}
-                            { seller && <section>(Seller)</section> }
+                            {/* { seller && <section>(Seller)</section> }
                             { buyer && <section>(Buyer)</section> }
-                            { courier && <section>(Courier)</section> }
+                            { courier && <section>(Courier)</section> } */}
                             </h4>
                         </div>
                     </section>
                     {
                         buyer && 
                         <section>
+                            <hr/>
                             <section>
                                 <div className="container">
-                                    <h2>Orders: {orders}</h2>
-                                </div>
-                            </section>
-                            <section>
-                                <div className="container">
-                                    <label htmlFor="order" className="label">Place order</label>
+                                    <h5>New order</h5>
                                     <div className="input-group mb-3" id="order">
                                         <input onChange={updateItem} type="text" className="form-control" placeholder="Item" />
                                     </div>
@@ -204,52 +199,106 @@ const Deal = () => {
                                     <button onClick={placeOrderHandler} type="button" className="btn btn-primary">Place order</button>
                                 </div>
                             </section>
-                            <section>
-                                <div className="container text-danger">
-                                    <p>{error}</p>
-                                </div>
-                            </section>
                         </section>
                     }
                     {
                         placedOrders.length > 0 &&
                         <section>
-                            <table className="table">
-                                <thead>
+                            <hr/>
+                            <div className="container">
+                                <h2>Orders: {orders}</h2>
+                            </div>
+                            <div className="container">
+                                <table className="table m-5 table-hover">
+                                    <thead className="thead-dark">
+                                        <tr>
+                                        <th scope="col">#</th>
+                                        <th scope="col">Product</th>
+                                        <th scope="col">Quantity</th>
+                                        <th scope="col">Price</th>
+                                        <th scope="col">Payment</th>
+                                        <th scope="col">Stage</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <>
+                                        {
+                                            placedOrders.map((order, index) => {
+                                                return (
+                                                    <tr key={index}>
+                                                        <td>{index}</td>
+                                                        <td>{order.product}</td>
+                                                        <td>{order.quantity}</td>
+                                                        <td>{order.price}</td>
+                                                        <td>{order.payment}</td>
+                                                        <td>{stages[order.stage]}</td>
+                                                    </tr>
+                                                )
+                                            })
+                                        }
+                                        </>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    }
+                    {
+                        seller && 
+                        <div className="container">
+                            <h3>WAITING TO SET PRICE</h3>
+                            <table className="table m-5 table-hover">
+                                <thead className="thead-dark">
                                     <tr>
                                     <th scope="col">#</th>
                                     <th scope="col">Product</th>
                                     <th scope="col">Quantity</th>
                                     <th scope="col">Price</th>
-                                    <th scope="col">Payment</th>
-                                    <th scope="col">Stage</th>
+                                    <th scope="col">Delivery price</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <>
                                     {
                                         placedOrders.map((order, index) => {
-                                            return (
-                                                <tr key={index}>
-                                                    <td>{index}</td>
-                                                    <td>{order.product}</td>
-                                                    <td>{order.quantity}</td>
-                                                    <td>{order.price}</td>
-                                                    <td>{order.payment}</td>
-                                                    <td>{order.stage}</td>
-                                                </tr>
-                                            )
+                                            if (order.stage === "0" && !order.priceSet) {
+                                                return (
+                                                    <tr key={index}>
+                                                        <td>{index}</td>
+                                                        <td>{order.product}</td>
+                                                        <td>{order.quantity}</td>
+                                                        <td>
+                                                            {
+                                                                order.price === "0" &&
+                                                                <input type="text" onChange={setPriceHandler} className="form-control" value={order.price}/>
+                                                            }
+                                                        </td>
+                                                        <td>
+                                                            {
+                                                                order.delivery.price === "0" &&
+                                                                <input type="text" onChange={setDeliveryPriceHandler} className="form-control" value={order.delivery.price}/>
+                                                            }
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            }
                                         })
                                     }
                                     </>
                                 </tbody>
                             </table>
-                        </section>
+                        </div>
                     }
                 </section>
                 :
                 <div className="container text-info">
                     <h1>Please connect your wallet</h1>
+                </div>
+            }
+            {
+                error &&
+                <div className="alert alert-danger m-5" role="alert">
+                    <strong>ERROR!</strong><p>{error}</p>
+                    <button onClick={() => setError('')} type="button" className="btn-close position-absolute top-0 end-0 p-2" aria-label="Close"></button>
                 </div>
             }
         </div>
