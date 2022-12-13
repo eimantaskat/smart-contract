@@ -20,7 +20,7 @@ const Deal = () => {
     const [buyer, setBuyer] = useState(false);
     const [courier, setCourier] = useState(false);
 
-    const stages = ["New", "Waiting for payment", "Shipping", "Shipped", "Done"]
+    const stages = ["New", "Waiting for payment", "Shipping", "Shipped", "Done"];
 
     useEffect(() => {
         if (dealContract) {
@@ -101,6 +101,42 @@ const Deal = () => {
 
     const updateAmount = (event : React.ChangeEvent<HTMLInputElement>) => {
         setAmount(event.target.value);
+    };
+
+    const forPrice = (orders) => {
+        return orders.filter((order) => {
+            if (order.stage === "0" && (!order.priceSet || !order.delivery.priceSet)) {
+                return true;
+            }
+            return false;
+        })
+    };
+
+    const forDelivery = (orders) => {
+        return orders.filter((order) => {
+            if (order.stage === "2") {
+                return true;
+            }
+            return false;
+        })
+    };
+
+    const forPayment = (orders) => {
+        return orders.filter((order) => {
+            if (order.stage === "1") {
+                return true;
+            }
+            return false;
+        })
+    };
+
+    const toBeDelivered = (orders) => {
+        return orders.filter((order) => {
+            if (order.stage === "3") {
+                return true;
+            }
+            return false;
+        })
     };
 
     const getOrders = async () => {
@@ -333,19 +369,37 @@ const Deal = () => {
                                     <tbody>
                                         <>
                                         {
-                                            placedOrders.map((order, index) => {
-                                                index++;
-                                                return (
-                                                    <tr key={index} id={index.toString()}>
-                                                        <td>{index}</td>
-                                                        <td>{order.product}</td>
-                                                        <td>{order.quantity}</td>
-                                                        <td>{web3.utils.fromWei(order.price, "ether")}</td>
-                                                        <td>{web3.utils.fromWei(order.delivery.price, "ether")}</td>
-                                                        <td>{stages[order.stage]}</td>
+                                            placedOrders.length ?
+                                                <>
+                                                    {        
+                                                        placedOrders.map((order, index) => {
+                                                            index++;
+                                                            return (
+                                                                <tr key={index} id={index.toString()}>
+                                                                    <td>{index}</td>
+                                                                    <td>{order.product}</td>
+                                                                    <td>{order.quantity}</td>
+                                                                    <td>{web3.utils.fromWei(order.price, "ether")}</td>
+                                                                    <td>{web3.utils.fromWei(order.delivery.price, "ether")}</td>
+                                                                    <td>{stages[order.stage]}</td>
+                                                                </tr>
+                                                            )
+                                                        })
+                                                    }
+                                                </>
+                                            :
+                                                <>
+                                                    <tr >
+                                                        <td>
+                                                            No orders
+                                                        </td>
+                                                        <td></td>
+                                                        <td></td>
+                                                        <td></td>
+                                                        <td></td>
+                                                        <td></td>
                                                     </tr>
-                                                )
-                                            })
+                                                </>
                                         }
                                         </>
                                     </tbody>
@@ -371,50 +425,68 @@ const Deal = () => {
                                 <tbody>
                                     <>
                                     {
-                                        placedOrders.map((order, index) => {
-                                            index++;
-                                            if (order.stage === "0" && (!order.priceSet || !order.delivery.priceSet)) {
-                                                return (
-                                                    <tr key={index}>
-                                                        <td>{index}</td>
-                                                        <td>{order.product}</td>
-                                                        <td>{order.quantity}</td>
-                                                        <td>
-                                                            <div className="input-group">
-                                                                {
-                                                                    !order.priceSet ?
-                                                                        <>
-                                                                            <input type="number" className="form-control" defaultValue={web3.utils.fromWei(order.price, "ether")}/>
-                                                                            <button onClick={setPriceHandler} type="button" className="btn btn-primary">Set price</button>
-                                                                        </>
-                                                                    :
-                                                                        <>
-                                                                            <input type="number" className="form-control" value={web3.utils.fromWei(order.price, "ether")} readOnly/>
-                                                                            <button onClick={setPriceHandler} type="button" className="btn btn-primary" disabled>Set price</button>
-                                                                        </>
-                                                                }
-                                                            </div>
-                                                        </td>
-                                                        <td> 
-                                                            <div className="input-group">
-                                                                {
-                                                                    !order.delivery.priceSet ?
-                                                                        <>
-                                                                            <input type="number" className="form-control" defaultValue={web3.utils.fromWei(order.delivery.price, "ether")}/>
-                                                                            <button onClick={setDeliveryPriceHandler} type="button" className="btn btn-primary">Set delivery price</button>
-                                                                        </>
-                                                                    :
-                                                                        <>
-                                                                            <input type="number" className="form-control" value={web3.utils.fromWei(order.delivery.price, "ether")} readOnly/>
-                                                                            <button onClick={setDeliveryPriceHandler} type="button" className="btn btn-primary" disabled>Set delivery price</button>
-                                                                        </>
-                                                                }
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                )
-                                            }
-                                        })
+                                        forPrice(placedOrders).length ?
+                                            <>
+                                                {
+                                                    forPrice(placedOrders).map((order, index) => {
+                                                        index++;
+                                                        if (order.stage === "0" && (!order.priceSet || !order.delivery.priceSet)) {
+                                                            return (
+                                                                <tr key={index}>
+                                                                    <td>{index}</td>
+                                                                    <td>{order.product}</td>
+                                                                    <td>{order.quantity}</td>
+                                                                    <td>
+                                                                        <div className="input-group">
+                                                                            {
+                                                                                !order.priceSet ?
+                                                                                    <>
+                                                                                        <input type="number" className="form-control" defaultValue={web3.utils.fromWei(order.price, "ether")}/>
+                                                                                        <button onClick={setPriceHandler} type="button" className="btn btn-primary">Set price</button>
+                                                                                    </>
+                                                                                :
+                                                                                    <>
+                                                                                        <input type="number" className="form-control" value={web3.utils.fromWei(order.price, "ether")} readOnly/>
+                                                                                        <button onClick={setPriceHandler} type="button" className="btn btn-primary" disabled>Set price</button>
+                                                                                    </>
+                                                                            }
+                                                                        </div>
+                                                                    </td>
+                                                                    <td> 
+                                                                        <div className="input-group">
+                                                                            {
+                                                                                !order.delivery.priceSet ?
+                                                                                    <>
+                                                                                        <input type="number" className="form-control" defaultValue={web3.utils.fromWei(order.delivery.price, "ether")}/>
+                                                                                        <button onClick={setDeliveryPriceHandler} type="button" className="btn btn-primary">Set delivery price</button>
+                                                                                    </>
+                                                                                :
+                                                                                    <>
+                                                                                        <input type="number" className="form-control" value={web3.utils.fromWei(order.delivery.price, "ether")} readOnly/>
+                                                                                        <button onClick={setDeliveryPriceHandler} type="button" className="btn btn-primary" disabled>Set delivery price</button>
+                                                                                    </>
+                                                                            }
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            )
+                                                        }
+                                                    })
+                                                }
+                                            </>
+                                            :
+                                            <>
+                                                <tr >
+                                                    <td>
+                                                        No orders
+                                                    </td>
+                                                    <td></td>
+                                                    <td></td>
+                                                    <td></td>
+                                                    <td></td>
+                                                    <td></td>
+                                                </tr>
+                                            </>
                                     }
                                     </>
                                 </tbody>
@@ -434,27 +506,45 @@ const Deal = () => {
                                 <tbody>
                                     <>
                                     {
-                                        placedOrders.map((order, index) => {
-                                            index++;
-                                            if (order.stage === "2") {
-                                                return (
-                                                    <tr key={index}>
-                                                        <td>{index}</td>
-                                                        <td>{order.product}</td>
-                                                        <td>{order.quantity}</td>
-                                                        <td>
-                                                            <input type="date" className="form-control" />
-                                                        </td>
-                                                        <td>
-                                                            <input type="text" className="form-control"/>
-                                                        </td>
-                                                        <td>
-                                                            <button onClick={startDeliveryHandler} type="button" className="btn btn-primary">Start delivery</button>
-                                                        </td>
-                                                    </tr>
-                                                )
+                                        forDelivery(placedOrders).length ?
+                                        <>
+                                            {
+                                                forDelivery(placedOrders).map((order, index) => {
+                                                    index++;
+                                                    if (order.stage === "2") {
+                                                        return (
+                                                            <tr key={index}>
+                                                                <td>{index}</td>
+                                                                <td>{order.product}</td>
+                                                                <td>{order.quantity}</td>
+                                                                <td>
+                                                                    <input type="date" className="form-control" />
+                                                                </td>
+                                                                <td>
+                                                                    <input type="text" className="form-control"/>
+                                                                </td>
+                                                                <td>
+                                                                    <button onClick={startDeliveryHandler} type="button" className="btn btn-primary">Start delivery</button>
+                                                                </td>
+                                                            </tr>
+                                                        )
+                                                    }
+                                                })
                                             }
-                                        })
+                                        </>
+                                            :
+                                        <>
+                                            <tr >
+                                                <td>
+                                                    No orders
+                                                </td>
+                                                <td></td>
+                                                <td></td>
+                                                <td></td>
+                                                <td></td>
+                                                <td></td>
+                                            </tr>
+                                        </>
                                     }
                                     </>
                                 </tbody>
@@ -480,24 +570,42 @@ const Deal = () => {
                                 <tbody>
                                     <>
                                     {
-                                        placedOrders.map((order, index) => {
-                                            index++;
-                                            if (order.stage === "1") {
-                                                return (
-                                                    <tr key={index}>
-                                                        <td>{index}</td>
-                                                        <td>{order.product}</td>
-                                                        <td>{order.quantity}</td>
-                                                        <td>{web3.utils.fromWei(order.price, "ether")}</td>
-                                                        <td>{web3.utils.fromWei(order.delivery.price, "ether")}</td>
-                                                        <td>{web3.utils.fromWei((Number(order.price) + Number(order.delivery.price)).toString(), "ether")}</td>
-                                                        <td>
-                                                            <button onClick={paymentHandler} type="button" className="btn btn-primary">Pay</button>
-                                                        </td>
-                                                    </tr>
-                                                )
-                                            }
-                                        })
+                                        forPayment(placedOrders).length ?
+                                            <>
+                                                {
+                                                    forPayment(placedOrders).map((order, index) => {
+                                                        index++;
+                                                        if (order.stage === "1") {
+                                                            return (
+                                                                <tr key={index}>
+                                                                    <td>{index}</td>
+                                                                    <td>{order.product}</td>
+                                                                    <td>{order.quantity}</td>
+                                                                    <td>{web3.utils.fromWei(order.price, "ether")}</td>
+                                                                    <td>{web3.utils.fromWei(order.delivery.price, "ether")}</td>
+                                                                    <td>{web3.utils.fromWei((Number(order.price) + Number(order.delivery.price)).toString(), "ether")}</td>
+                                                                    <td>
+                                                                        <button onClick={paymentHandler} type="button" className="btn btn-primary">Pay</button>
+                                                                    </td>
+                                                                </tr>
+                                                            )
+                                                        }
+                                                    })
+                                                }
+                                            </>
+                                        :
+                                            <>
+                                                <tr >
+                                                    <td>
+                                                        No orders
+                                                    </td>
+                                                    <td></td>
+                                                    <td></td>
+                                                    <td></td>
+                                                    <td></td>
+                                                    <td></td>
+                                                </tr>
+                                            </>
                                     }
                                     </>
                                 </tbody>
@@ -520,24 +628,42 @@ const Deal = () => {
                                 </thead>
                                 <tbody>
                                     <>
-                                    {
-                                        placedOrders.map((order, index) => {
-                                            index++;
-                                            if (order.stage === "3") {
-                                                return (
-                                                    <tr key={index}>
-                                                        <td>{index}</td>
-                                                        <td>{order.product}</td>
-                                                        <td>{order.quantity}</td>
-                                                        <td>{order.delivery.plannedDate}</td>
+                                        {
+                                            toBeDelivered(placedOrders).length ?
+                                                <>
+                                                    {
+                                                        toBeDelivered(placedOrders).map((order, index) => {
+                                                            index++;
+                                                            if (order.stage === "3") {
+                                                                return (
+                                                                    <tr key={index}>
+                                                                        <td>{index}</td>
+                                                                        <td>{order.product}</td>
+                                                                        <td>{order.quantity}</td>
+                                                                        <td>{order.delivery.plannedDate}</td>
+                                                                        <td>
+                                                                            <button onClick={deliveryHandler} type="button" className="btn btn-primary">Confirm Delivery</button>
+                                                                        </td>
+                                                                    </tr>
+                                                                )
+                                                            }
+                                                        })
+                                                    }
+                                                </>
+                                            :
+                                                <>
+                                                    <tr >
                                                         <td>
-                                                            <button onClick={deliveryHandler} type="button" className="btn btn-primary">Confirm Delivery</button>
+                                                            No orders
                                                         </td>
+                                                        <td></td>
+                                                        <td></td>
+                                                        <td></td>
+                                                        <td></td>
+                                                        <td></td>
                                                     </tr>
-                                                )
-                                            }
-                                        })
-                                    }
+                                                </>
+                                        }
                                     </>
                                 </tbody>
                             </table>
