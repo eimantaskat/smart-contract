@@ -185,6 +185,7 @@ const Deal = () => {
         let number = fields[0].textContent;
         
         let price = fields[3].childNodes[0].childNodes[0].value;
+        console.log(number);
         try {
             await dealContract.methods.setOrderPrice(web3.utils.toWei(price, "ether"), number).send(
                 {
@@ -428,7 +429,7 @@ const Deal = () => {
                                         forPrice(placedOrders).length ?
                                             <>
                                                 {
-                                                    forPrice(placedOrders).map((order, index) => {
+                                                    placedOrders.map((order, index) => {
                                                         index++;
                                                         if (order.stage === "0" && (!order.priceSet || !order.delivery.priceSet)) {
                                                             return (
@@ -509,7 +510,7 @@ const Deal = () => {
                                         forDelivery(placedOrders).length ?
                                         <>
                                             {
-                                                forDelivery(placedOrders).map((order, index) => {
+                                                placedOrders.map((order, index) => {
                                                     index++;
                                                     if (order.stage === "2") {
                                                         return (
@@ -573,7 +574,7 @@ const Deal = () => {
                                         forPayment(placedOrders).length ?
                                             <>
                                                 {
-                                                    forPayment(placedOrders).map((order, index) => {
+                                                    placedOrders.map((order, index) => {
                                                         index++;
                                                         if (order.stage === "1") {
                                                             return (
@@ -632,7 +633,7 @@ const Deal = () => {
                                             toBeDelivered(placedOrders).length ?
                                                 <>
                                                     {
-                                                        toBeDelivered(placedOrders).map((order, index) => {
+                                                        placedOrders.map((order, index) => {
                                                             index++;
                                                             if (order.stage === "3") {
                                                                 return (
