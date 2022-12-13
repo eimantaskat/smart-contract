@@ -30,6 +30,10 @@ const Deal = () => {
 
     useEffect(() => {
         if (web3) {
+            setSeller(false);
+            setBuyer(false);
+            setCourier(false);
+
             setAccount();
     
             const deal = getDealContract(web3);
@@ -47,35 +51,34 @@ const Deal = () => {
     }, [orders]);
 
     const handleAccountChange = (accounts) => {
-        if (address) {
-            window.location.reload();
-        }
         setAddress(accounts[0]);
-        updateView();
-        setSeller(false);
-        setBuyer(false);
-        setCourier(false);
+        window.location.reload();
     }
 
     const updateView = async () => {
         if (!dealContract) {
             return;
         }
+        if (!address) {
+            return;
+        }
         try {
+
             const sellerAddress = await dealContract.methods.sellerAddress().call();
             if (address === sellerAddress) {
                 getOrdersHandler();
                 return setSeller(true);
             }
+
             const buyerAddress = await dealContract.methods.buyerAddress().call();
             if (address === buyerAddress) {
                 getOrdersHandler();
                 return setBuyer(true);
             }
+
             if (address !== sellerAddress && address !== buyerAddress) {
-                setCourier(true);
                 getOrdersHandler();
-                getOrders();
+                return setCourier(true);
             }
         } catch (err) {
             setError(err.message);
@@ -85,7 +88,6 @@ const Deal = () => {
     const setAccount = async () => {
         const accounts = await web3.eth.getAccounts();
         setAddress(accounts[0]);
-        updateView();
     };
 
     const getOrdersHandler = async () => {
@@ -240,7 +242,7 @@ const Deal = () => {
         }
     };
 
-    const handleDisconnect = async (event) => {
+    const handleDisconnect = async () => {
         setAddress(null);
     };
 
@@ -259,7 +261,24 @@ const Deal = () => {
                         {
                             address ?
                                 <Dropdown>
-                                    <Dropdown.Toggle className="btn btn-success" variant="success" id="dropdown-basic">{address}</Dropdown.Toggle>
+                                    <Dropdown.Toggle className="btn btn-success" variant="success" id="dropdown-basic">
+                                        {address}
+                                        {
+                                            seller &&
+                                                <> (seller)</>
+                                                    
+                                        }
+                                        {
+                                            buyer &&
+                                                <> (buyer)</>
+                                                    
+                                        }
+                                        {
+                                            courier &&
+                                                <> (courier)</>
+                                                    
+                                        }
+                                    </Dropdown.Toggle>
                                     <Dropdown.Menu className="w-100">
                                         <Dropdown.Item onClick={handleDisconnect} className="btn btn-success">Disconnect</Dropdown.Item>
                                     </Dropdown.Menu>
@@ -270,6 +289,7 @@ const Deal = () => {
                     </div>
                 </div>
             </nav>
+
             {
                 address ?
                 <section>
